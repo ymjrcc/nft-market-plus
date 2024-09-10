@@ -2,6 +2,9 @@
 pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/interfaces/IERC721.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
+
+interface IToken is IERC20, IERC20Permit {}
 
 contract NFTMarketPlus {
     
@@ -13,10 +16,10 @@ contract NFTMarketPlus {
     // NFTAddress => tokenId => Order
     mapping(address => mapping(uint256 => Order)) public nftList;
 
-    IERC20 token;
+    IToken token;
 
     constructor(address _token) {
-        token = IERC20(_token);
+        token = IToken(_token);
     }
 
     function _list(address _seller, address _nftAddr, uint256 _tokenId, uint256 _price) internal {
@@ -57,6 +60,7 @@ contract NFTMarketPlus {
     function buy(address _nftAddr, uint256 _tokenId) public {
         Order memory _order = nftList[_nftAddr][_tokenId];
         require(_order.price > 0, "The price must be greater than 0");
+        require(token.allowance(msg.sender, address(this)) >= _order.price, "No enough allowance");
         require(token.balanceOf(msg.sender) >= _order.price, "No enough balance");
         IERC721 _nft = IERC721(_nftAddr);
         require(_nft.ownerOf(_tokenId) == address(this), "NFT is not on sell");
@@ -64,6 +68,17 @@ contract NFTMarketPlus {
         _nft.transferFrom(address(this), msg.sender, _tokenId);
         token.transferFrom(msg.sender, _order.owner, _order.price);
         emit Buy(msg.sender, _nftAddr, _tokenId, _order.price);
+    }
+
+    function permitBuy(address _nftAddr, uint256 _tokenId, uint256 deadline, uint8 v, bytes32 r, bytes32 s) public {
+        token.permit(
+          msg.sender, 
+          address(this), 
+          nftList[_nftAddr][_tokenId].price,
+          deadline,
+          v, r, s
+        );
+        buy(_nftAddr, _tokenId);
     }
 
     // List an NFT
