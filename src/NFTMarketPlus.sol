@@ -5,6 +5,14 @@ import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 
 interface IToken is IERC20, IERC20Permit {}
+interface INFT is IERC721 {
+    function permit(
+        address _to,
+        uint256 _tokenId,
+        uint256 _deadline, 
+        bytes calldata _signature
+    ) external returns (address);
+}
 
 contract NFTMarketPlus {
     
@@ -40,6 +48,20 @@ contract NFTMarketPlus {
         _list(msg.sender, _nftAddr, _tokenId, _price);
     }
 
+    function listWithSignature(
+        address _nftAddr,
+        uint256 _tokenId,
+        uint256 _price,
+        uint256 _deadline, 
+        bytes calldata _signature
+    ) public {
+        require(block.timestamp <= _deadline, "Signature expired");
+        // approve
+        address signer = INFT(_nftAddr).permit(address(this), _tokenId, _deadline, _signature);
+        // list the NFT
+        _list(signer, _nftAddr, _tokenId, _price);
+    }
+
     function cancel(address _nftAddr, uint256 _tokenId) public {
         Order memory _order = nftList[_nftAddr][_tokenId];
         require(_order.owner == msg.sender, "Not the owner");
@@ -71,6 +93,7 @@ contract NFTMarketPlus {
     }
 
     function permitBuy(address _nftAddr, uint256 _tokenId, uint256 deadline, uint8 v, bytes32 r, bytes32 s) public {
+        require(block.timestamp <= deadline, "Signature expired");
         token.permit(
           msg.sender, 
           address(this), 

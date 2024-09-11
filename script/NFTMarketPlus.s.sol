@@ -12,7 +12,7 @@ contract NFTMarketPlusScript is Script {
     function run() public {
         vm.startBroadcast();
 
-        market = new NFTMarketPlus(0x5FbDB2315678afecb367f032d93F642f64180aa3);
+        market = new NFTMarketPlus(0x3f0be47e94f78620496c4017FD8044772C676655);
 
         vm.stopBroadcast();
     }
